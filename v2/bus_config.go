@@ -14,7 +14,7 @@ type BusConfig struct {
 	ServerMaxConn  int
 	ServerIdleTime int //ms
 
-	Clients []*ClientXml
+	Clients []ClientXml
 
 	InBufSize  int //读缓冲初始大小
 	OutBufSize int //写缓冲初始大小

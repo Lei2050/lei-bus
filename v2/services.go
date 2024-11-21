@@ -30,7 +30,7 @@ func (b *Bus) Process(conn api.TcpConnectioner, packet *pkt.Packet) {
 	packet.SetReadPos(0)
 
 	//传递给上层
-	b.c <- packet
+	b.c <- RawMsg{packetHandler: b.packetHandler, conn: conn, packet: packet}
 }
 
 // //////////////// impliments pkt.PacketHandler - end //////////////////
@@ -114,7 +114,6 @@ func (b *Bus) onRegisterBusIdAck(conn api.TcpConnectioner, packet *pkt.Packet) {
 	log.Tracef("onRegisterBusIdAck %d, %d", conn.Id(), peerBusIdCnt)
 	for i := 0; i < int(peerBusIdCnt); i++ {
 		peerBusId := packet.ReadUint32()
-		b.RegisterBusId(BusId(peerBusId), conn)
 		log.Tracef("onRegisterBusIdAck %d, %d", conn.Id(), peerBusId)
 	}
 }

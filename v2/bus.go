@@ -18,16 +18,17 @@ var _ pkt.PacketHandler = &Bus{}
 type Bus struct {
 	Config *BusConfig
 
-	tcpSers       []netapi.TcpServerer
-	tcpClis       map[string]netapi.TcpClienter //key = server_addr
-	packetHandler pkt.PacketHandler
+	tcpSers []netapi.TcpServerer
+	tcpClis map[string]netapi.TcpClienter //key = server_addr
 
 	tcpConns map[BusId]netapi.TcpConnectioner
 
-	c chan *pkt.Packet
+	packetHandler pkt.PacketHandler
+
+	c chan RawMsg
 
 	*pkt.Broker
-	*cls.CloseUtil
+	cls.CloseUtil
 	sync.RWMutex
 }
 
@@ -41,8 +42,8 @@ func NewBusServer(busId []BusId, config *BusConfig, packetHandler pkt.PacketHand
 		tcpClis:       make(map[string]netapi.TcpClienter),
 		tcpConns:      make(map[BusId]netapi.TcpConnectioner),
 		packetHandler: packetHandler,
-		c:             make(chan *pkt.Packet, 1024),
-		CloseUtil:     cls.NewCloseUtil(),
+		c:             make(chan RawMsg, 1024),
+		CloseUtil:     cls.MakeCloseUtil(),
 	}
 	b.Broker = pkt.NewBroker(b)
 	return b
@@ -73,7 +74,7 @@ func (b *Bus) getConnCloseCb(busId BusId) func() {
 func (b *Bus) reconncectAndClear() {
 	var (
 		reconnects []string
-		dials      []*ClientXml
+		dials      []ClientXml
 	)
 	b.RLock()
 	for _, v := range b.Config.Clients {
@@ -207,7 +208,7 @@ func (b *Bus) RegisterBusId(id BusId, conn netapi.TcpConnectioner) {
 	//log.Debug("after tcpConns:%+v", b.tcpConns)
 }
 
-func (b *Bus) C() <-chan *pkt.Packet {
+func (b *Bus) C() <-chan RawMsg {
 	return b.c
 }
 
@@ -271,4 +272,15 @@ func (b *Bus) GetBusIdsByAppType(apptype BusIdType) []BusId {
 		}
 	}
 	return busIds
+}
+
+type RawMsg struct {
+	packetHandler pkt.PacketHandler
+	conn          netapi.TcpConnectioner
+	packet        *pkt.Packet
+}
+
+func (r *RawMsg) Process() {
+	r.packetHandler.Process(r.conn, r.packet)
+	r.packet.Release()
 }
